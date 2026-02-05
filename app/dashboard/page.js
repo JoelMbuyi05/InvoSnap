@@ -1,4 +1,4 @@
-// app/(dashboard)/page.js
+// app/dashboard/page.js
 'use client';
 
 import { Button } from '@/components/ui/button';

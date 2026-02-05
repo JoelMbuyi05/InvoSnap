@@ -1,4 +1,4 @@
-// app/auth/signup/page.js
+// app/auth/login/page.js
 'use client';
 
 import { useState } from 'react';
@@ -10,30 +10,25 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
-export default function SignupPage() {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [businessName, setBusinessName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signup } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    
-    if (password.length < 6) {
-      return setError('Password must be at least 6 characters');
-    }
 
     try {
       setError('');
       setLoading(true);
-      await signup(email, password, businessName);
+      await login(email, password);
       router.push('/dashboard');
     } catch (error) {
-      setError('Failed to create account: ' + error.message);
+      setError('Failed to log in. Please check your email and password.');
     } finally {
       setLoading(false);
     }
@@ -43,8 +38,8 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Start creating invoices in 60 seconds</CardDescription>
+          <CardTitle className="text-2xl">Welcome back</CardTitle>
+          <CardDescription>Log in to your BillFast account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -53,18 +48,6 @@ export default function SignupPage() {
                 {error}
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="businessName">Business Name</Label>
-              <Input
-                id="businessName"
-                type="text"
-                placeholder="John Doe Design"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                required
-              />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -88,17 +71,16 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <p className="text-xs text-gray-500">At least 6 characters</p>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? 'Logging in...' : 'Log in'}
             </Button>
 
             <p className="text-center text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link href="/auth/login" className="text-blue-600 hover:underline">
-                Log in
+              Don&apos;t have an account?{' '}
+              <Link href="/auth/signup" className="text-blue-600 hover:underline">
+                Sign up
               </Link>
             </p>
           </form>

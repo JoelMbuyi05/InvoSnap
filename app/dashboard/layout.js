@@ -1,4 +1,4 @@
-// app/(dashboard)/layout.js
+// app/dashboard/layout.js
 'use client';
 
 import { useAuth } from '@/lib/context/AuthContext';
@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/auth/login');
     }
   }, [user, loading, router]);
 
@@ -35,7 +35,7 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push('/auth/login');
   };
 
   return (
