@@ -8,14 +8,16 @@ import { db } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Eye, Send, MoreVertical } from 'lucide-react';
+import { Plus, FileText, Eye, MoreVertical, Download, Mail, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { generateWhatsAppLink } from '@/lib/whatsapp/share';
 
 export default function DashboardPage() {
   const { user, userData } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -46,14 +48,118 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleDownloadPDF(invoiceId, invoiceNumber) {
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/pdf`);
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Error downloading PDF');
+    }
+  }
+
+  // ✅ FIXED: Complete handleSendEmail function
+  async function handleSendEmail(invoiceId, clientEmail, clientName) {
+    // Check if email exists
+    if (!clientEmail) {
+      alert(
+        `❌ Cannot send email\n\n` +
+        `This client (${clientName || 'Unknown'}) doesn't have an email address.\n\n` +
+        `Please add an email to the client record first.`
+      );
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clientEmail)) {
+      alert(`❌ Invalid email format: ${clientEmail}`);
+      return;
+    }
+
+    if (!confirm(`📧 Send invoice to ${clientName || 'client'} at ${clientEmail}?`)) return;
+
+    try {
+      setSendingEmail(true);
+
+      const response = await fetch(`/api/invoices/${invoiceId}/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          clientEmail,
+          clientName,
+          invoiceId 
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      alert('✅ Invoice sent successfully! ✉️');
+      
+      // Refresh invoices
+      fetchInvoices();
+    } catch (error) {
+      console.error('Send error:', error);
+      alert('❌ Error sending email: ' + error.message);
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
+  // ✅ WhatsApp share function
+  function handleWhatsAppShare(invoice) {
+    if (!invoice.clientPhone && !invoice.clientEmail) {
+      alert('Client needs a phone number or email to share via WhatsApp');
+      return;
+    }
+
+    const clientContact = invoice.clientPhone || invoice.clientEmail;
+    
+    const invoiceUrl = `${window.location.origin}/invoice/${invoice.id}`;
+    
+    const whatsappUrl = generateWhatsAppLink(
+      invoice,
+      {
+        businessName: userData?.businessName || 'Your Business',
+        businessEmail: userData?.businessEmail || user?.email
+      },
+      invoiceUrl
+    );
+
+    window.open(whatsappUrl, '_blank');
+  }
+
   function getStatusColor(status) {
     switch (status) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
       case 'sent':
         return 'bg-blue-100 text-blue-800';
-      case 'viewed':
+      case 'paid':
         return 'bg-green-100 text-green-800';
+      case 'viewed':
+        return 'bg-purple-100 text-purple-800';
+      case 'overdue':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -68,13 +174,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
+    <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Invoices</h1>
           {userData?.plan === 'free' && (
             <p className="text-sm text-gray-600 mt-1">
-              {userData.invoicesThisMonth || 0}/5 invoices this month
+              {userData?.invoicesThisMonth || 0}/5 invoices this month
             </p>
           )}
         </div>
@@ -87,7 +193,6 @@ export default function DashboardPage() {
       </div>
 
       {invoices.length === 0 ? (
-        // Empty state
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No invoices yet</h3>
@@ -102,7 +207,6 @@ export default function DashboardPage() {
           </Link>
         </Card>
       ) : (
-        // Invoice list
         <div className="space-y-3">
           {invoices.map(invoice => (
             <Card key={invoice.id} className="p-4 hover:shadow-md transition-shadow">
@@ -115,18 +219,18 @@ export default function DashboardPage() {
                   
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold">{invoice.invoiceNumber}</h3>
+                      <h3 className="font-semibold">{invoice.invoiceNumber || 'INV-000'}</h3>
                       <Badge className={getStatusColor(invoice.status)}>
-                        {invoice.status}
+                        {invoice.status || 'draft'}
                       </Badge>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <span>{invoice.clientName}</span>
+                      <span>{invoice.clientName || 'No client'}</span>
                       <span className="mx-2">•</span>
-                      <span>${invoice.total.toFixed(2)}</span>
+                      <span>${invoice.total?.toFixed(2) || '0.00'}</span>
                       <span className="mx-2">•</span>
                       <span>
-                        Due {format(new Date(invoice.dueDate), 'MMM d, yyyy')}
+                        Due {invoice.dueDate ? format(new Date(invoice.dueDate), 'MMM d, yyyy') : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -141,10 +245,52 @@ export default function DashboardPage() {
                           Edit
                         </Button>
                       </Link>
-                      <Button size="sm">
-                        <Send className="mr-2 h-4 w-4" />
-                        Send
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownloadPDF(invoice.id, invoice.invoiceNumber)}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        PDF
                       </Button>
+                      
+                      {/* ✅ FIXED: Email button with proper props */}
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSendEmail(invoice.id, invoice.clientEmail, invoice.clientName)}
+                        disabled={sendingEmail}
+                      >
+                        {sendingEmail ? (
+                          <>Sending...</>
+                        ) : (
+                          <>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Email
+                          </>
+                        )}
+                      </Button>
+
+                      {/* WhatsApp button with Pro check */}
+                      {userData?.plan === 'pro' ? (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleWhatsAppShare(invoice)}
+                        >
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          WhatsApp
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          disabled
+                          title="Upgrade to Pro to share via WhatsApp"
+                        >
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          🔒 Pro
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <>
@@ -154,6 +300,14 @@ export default function DashboardPage() {
                           View
                         </Button>
                       </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownloadPDF(invoice.id, invoice.invoiceNumber)}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        PDF
+                      </Button>
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
