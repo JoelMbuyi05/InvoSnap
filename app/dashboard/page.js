@@ -8,16 +8,21 @@ import { db } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Eye, MoreVertical, Download, Mail, MessageCircle } from 'lucide-react';
+import { Plus, FileText, Eye, MoreVertical, Download, Mail, MessageCircle, Send } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { generateWhatsAppLink } from '@/lib/whatsapp/share';
+import SendModal from '@/components/invoice/sendModal';
 
 export default function DashboardPage() {
   const { user, userData } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
+  
+  // ✅ ADDED: Modal state
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -71,9 +76,48 @@ export default function DashboardPage() {
     }
   }
 
-  // ✅ FIXED: Complete handleSendEmail function
-  async function handleSendEmail(invoiceId, clientEmail, clientName) {
-    // Check if email exists
+  // ✅ ADDED: Function to open modal
+  function handleOpenSendModal(invoice) {
+    setSelectedInvoice(invoice);
+    setSendModalOpen(true);
+  }
+
+  // ✅ MODIFIED: Email function for modal
+  async function handleSendEmail() {
+    if (!selectedInvoice) return;
+    
+    try {
+      setSendingEmail(true);
+      
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientEmail: selectedInvoice.clientEmail,
+          clientName: selectedInvoice.clientName
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      alert('✅ Invoice sent via email! ✉️');
+      setSendModalOpen(false);
+      fetchInvoices();
+    } catch (error) {
+      console.error('Send error:', error);
+      alert('❌ Error sending email: ' + error.message);
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
+  // ✅ Original email function (keep for reference, but modal handles it now)
+  async function handleSendEmailOld(invoiceId, clientEmail, clientName) {
     if (!clientEmail) {
       alert(
         `❌ Cannot send email\n\n` +
@@ -83,7 +127,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(clientEmail)) {
       alert(`❌ Invalid email format: ${clientEmail}`);
@@ -114,8 +157,6 @@ export default function DashboardPage() {
       }
 
       alert('✅ Invoice sent successfully! ✉️');
-      
-      // Refresh invoices
       fetchInvoices();
     } catch (error) {
       console.error('Send error:', error);
@@ -125,15 +166,12 @@ export default function DashboardPage() {
     }
   }
 
-  // ✅ WhatsApp share function
   function handleWhatsAppShare(invoice) {
     if (!invoice.clientPhone && !invoice.clientEmail) {
       alert('Client needs a phone number or email to share via WhatsApp');
       return;
     }
 
-    const clientContact = invoice.clientPhone || invoice.clientEmail;
-    
     const invoiceUrl = `${window.location.origin}/invoice/${invoice.id}`;
     
     const whatsappUrl = generateWhatsAppLink(
@@ -249,31 +287,23 @@ export default function DashboardPage() {
                         PDF
                       </Button>
                       
-                      {/* ✅ FIXED: Email button with proper props */}
+                      {/* ✅ UPDATED: Send button that opens modal */}
                       <Button 
                         size="sm"
-                        onClick={() => handleSendEmail(invoice.id, invoice.clientEmail, invoice.clientName)}
-                        disabled={sendingEmail}
+                        onClick={() => handleOpenSendModal(invoice)}
                       >
-                        {sendingEmail ? (
-                          <>Sending...</>
-                        ) : (
-                          <>
-                            <Mail className="mr-2 h-4 w-4" />
-                            Email
-                          </>
-                        )}
+                        <Send className="mr-2 h-4 w-4" />
+                        Send
                       </Button>
 
-                      {/* WhatsApp button*/}
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleWhatsAppShare(invoice)}
-                        >
-                          <MessageCircle className="mr-2 h-4 w-4" />
-                          WhatsApp
-                        </Button>
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleWhatsAppShare(invoice)}
+                      >
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        WhatsApp
+                      </Button>
                     </>
                   ) : (
                     <>
@@ -301,6 +331,18 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* ✅ ADDED: Send Modal */}
+      {selectedInvoice && (
+        <SendModal
+          isOpen={sendModalOpen}
+          onClose={() => setSendModalOpen(false)}
+          invoice={selectedInvoice}
+          businessInfo={userData}
+          onSendEmail={handleSendEmail}
+          onDownloadPDF={() => handleDownloadPDF(selectedInvoice.id, selectedInvoice.invoiceNumber)}
+        />
       )}
     </div>
   );
