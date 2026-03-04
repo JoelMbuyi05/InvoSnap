@@ -83,6 +83,12 @@ export default function DashboardPage() {
     try {
       const toastId = toast.loading('Generating PDF...');
       
+      if(!invoiceId) {
+        throw new Error('Invoice ID is missing');
+      }
+
+      console.log('Downloading PDF for invoice:', invoiceId);
+      
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`);
       
       if (!response.ok) {

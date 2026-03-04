@@ -15,6 +15,7 @@ export default function SendModal({
   invoiceId,
   businessInfo
 }) {
+
   const [sending, setSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -100,12 +101,8 @@ export default function SendModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Send Invoice {invoice.invoiceNumber}</span>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          Send Invoice {invoice.invoiceNumber
+          }
         </DialogHeader>
 
         <div className="space-y-3 py-4">
