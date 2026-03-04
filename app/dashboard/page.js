@@ -3,17 +3,18 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, FileText, Download, Send, Search, Filter } from 'lucide-react';
+import { Plus, FileText, Download, Send, Search, Trash2, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import SendModal from '@/components/invoice/sendModal';
 
 export default function DashboardPage() {
   const { user, userData } = useAuth();
@@ -22,6 +23,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Send modal state
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -60,7 +65,6 @@ export default function DashboardPage() {
   function filterInvoices() {
     let filtered = invoices;
 
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(invoice =>
         invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,7 +72,6 @@ export default function DashboardPage() {
       );
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(invoice => invoice.status === statusFilter);
     }
@@ -78,10 +81,14 @@ export default function DashboardPage() {
 
   async function handleDownloadPDF(invoiceId, invoiceNumber) {
     try {
-      toast.loading('Generating PDF...');
+      const toastId = toast.loading('Generating PDF...');
+      
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`);
       
-      if (!response.ok) throw new Error('Failed to generate PDF');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate PDF');
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -93,11 +100,31 @@ export default function DashboardPage() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast.success('PDF downloaded!');
+      toast.success('PDF downloaded!', { id: toastId });
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Error downloading PDF');
+      toast.error(error.message || 'Error downloading PDF');
     }
+  }
+
+  async function handleDelete(invoiceId, invoiceNumber) {
+    if (!confirm(`Delete invoice ${invoiceNumber}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'invoices', invoiceId));
+      setInvoices(invoices.filter(inv => inv.id !== invoiceId));
+      toast.success('Invoice deleted');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete invoice');
+    }
+  }
+
+  function handleOpenSendModal(invoice) {
+    setSelectedInvoice(invoice);
+    setSendModalOpen(true);
   }
 
   function getStatusColor(status) {
@@ -223,11 +250,15 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Edit Button */}
                   <Link href={`/dashboard/invoices/${invoice.id}/edit`}>
                     <Button variant="outline" size="sm">
+                      <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </Button>
                   </Link>
+                  
+                  {/* Download PDF Button */}
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -236,17 +267,47 @@ export default function DashboardPage() {
                     <Download className="mr-2 h-4 w-4" />
                     PDF
                   </Button>
+                  
+                  {/* Send Button (for drafts) */}
                   {invoice.status === 'draft' && (
-                    <Button size="sm">
+                    <Button 
+                      size="sm"
+                      onClick={() => handleOpenSendModal(invoice)}
+                    >
                       <Send className="mr-2 h-4 w-4" />
                       Send
                     </Button>
                   )}
+                  
+                  {/* Delete Button */}
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDelete(invoice.id, invoice.invoiceNumber)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Send Modal */}
+      {selectedInvoice && (
+        <SendModal
+          isOpen={sendModalOpen}
+          onClose={() => {
+            setSendModalOpen(false);
+            setSelectedInvoice(null);
+            fetchInvoices(); // Refresh invoices after sending
+          }}
+          invoice={selectedInvoice}
+          invoiceId={selectedInvoice.id}
+          businessInfo={userData}
+        />
       )}
     </div>
   );
