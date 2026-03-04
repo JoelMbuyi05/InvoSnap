@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function NewClientPage() {
   const { user, userData } = useAuth();
@@ -40,7 +41,8 @@ export default function NewClientPage() {
     e.preventDefault(); // Prevent page refresh
     
     if (!formData.name || !formData.email) {
-      return alert('Name and email are required');
+      toast.error('Name and email are required');
+      return
     }
 
     try {
@@ -59,9 +61,10 @@ export default function NewClientPage() {
       });
 
       // Go back to clients list
+      toast.success('Client added successfully!');
       router.push('/dashboard/clients');
     } catch (error) {
-      alert('Error adding client: ' + error.message);
+      toast.error('Failed to add client: ' + error.message);
     } finally {
       setLoading(false);
     }

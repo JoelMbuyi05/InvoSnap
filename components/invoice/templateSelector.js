@@ -16,13 +16,13 @@ const templates = [
     id: 'modern',
     name: 'Modern',
     description: 'Colorful and bold',
-    isPro: true
+    isPro: false
   },
   {
     id: 'minimal',
     name: 'Minimal',
     description: 'Simple and elegant',
-    isPro: true
+    isPro: false
   }
 ];
 

@@ -3,26 +3,25 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Eye, MoreVertical, Download, Mail, MessageCircle, Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, FileText, Download, Send, Search, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { generateWhatsAppLink } from '@/lib/whatsapp/share';
-import SendModal from '@/components/invoice/sendModal';
+import { toast } from 'sonner';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 export default function DashboardPage() {
   const { user, userData } = useAuth();
   const [invoices, setInvoices] = useState([]);
+  const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  
-  // ✅ ADDED: Modal state
-  const [sendModalOpen, setSendModalOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     if (user) {
@@ -30,13 +29,16 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    filterInvoices();
+  }, [searchTerm, statusFilter, invoices]);
+
   async function fetchInvoices() {
     try {
       const q = query(
         collection(db, 'invoices'),
         where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
-        limit(20)
+        orderBy('createdAt', 'desc')
       );
       
       const snapshot = await getDocs(q);
@@ -46,20 +48,40 @@ export default function DashboardPage() {
       }));
       
       setInvoices(invoicesData);
+      setFilteredInvoices(invoicesData);
     } catch (error) {
       console.error('Error fetching invoices:', error);
+      toast.error('Failed to load invoices');
     } finally {
       setLoading(false);
     }
   }
 
+  function filterInvoices() {
+    let filtered = invoices;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(invoice =>
+        invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(invoice => invoice.status === statusFilter);
+    }
+
+    setFilteredInvoices(filtered);
+  }
+
   async function handleDownloadPDF(invoiceId, invoiceNumber) {
     try {
+      toast.loading('Generating PDF...');
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`);
-
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
+      
+      if (!response.ok) throw new Error('Failed to generate PDF');
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -70,145 +92,25 @@ export default function DashboardPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF downloaded!');
     } catch (error) {
       console.error('Download error:', error);
-      alert('Error downloading PDF');
+      toast.error('Error downloading PDF');
     }
-  }
-
-  // ✅ ADDED: Function to open modal
-  function handleOpenSendModal(invoice) {
-    setSelectedInvoice(invoice);
-    setSendModalOpen(true);
-  }
-
-  // ✅ MODIFIED: Email function for modal
-  async function handleSendEmail() {
-    if (!selectedInvoice) return;
-    
-    try {
-      setSendingEmail(true);
-      
-      const response = await fetch(`/api/invoices/${selectedInvoice.id}/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientEmail: selectedInvoice.clientEmail,
-          clientName: selectedInvoice.clientName
-        })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to send email');
-      }
-
-      alert('✅ Invoice sent via email! ✉️');
-      setSendModalOpen(false);
-      fetchInvoices();
-    } catch (error) {
-      console.error('Send error:', error);
-      alert('❌ Error sending email: ' + error.message);
-    } finally {
-      setSendingEmail(false);
-    }
-  }
-
-  // ✅ Original email function (keep for reference, but modal handles it now)
-  async function handleSendEmailOld(invoiceId, clientEmail, clientName) {
-    if (!clientEmail) {
-      alert(
-        `❌ Cannot send email\n\n` +
-        `This client (${clientName || 'Unknown'}) doesn't have an email address.\n\n` +
-        `Please add an email to the client record first.`
-      );
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(clientEmail)) {
-      alert(`❌ Invalid email format: ${clientEmail}`);
-      return;
-    }
-
-    if (!confirm(`📧 Send invoice to ${clientName || 'client'} at ${clientEmail}?`)) return;
-
-    try {
-      setSendingEmail(true);
-
-      const response = await fetch(`/api/invoices/${invoiceId}/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          clientEmail,
-          clientName,
-          invoiceId 
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
-      }
-
-      alert('✅ Invoice sent successfully! ✉️');
-      fetchInvoices();
-    } catch (error) {
-      console.error('Send error:', error);
-      alert('❌ Error sending email: ' + error.message);
-    } finally {
-      setSendingEmail(false);
-    }
-  }
-
-  function handleWhatsAppShare(invoice) {
-    if (!invoice.clientPhone && !invoice.clientEmail) {
-      alert('Client needs a phone number or email to share via WhatsApp');
-      return;
-    }
-
-    const invoiceUrl = `${window.location.origin}/invoice/${invoice.id}`;
-    
-    const whatsappUrl = generateWhatsAppLink(
-      invoice,
-      {
-        businessName: userData?.businessName || 'Your Business',
-        businessEmail: userData?.businessEmail || user?.email
-      },
-      invoiceUrl
-    );
-
-    window.open(whatsappUrl, '_blank');
   }
 
   function getStatusColor(status) {
     switch (status) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'sent':
-        return 'bg-blue-100 text-blue-800';
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'viewed':
-        return 'bg-purple-100 text-purple-800';
-      case 'overdue':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'sent': return 'bg-blue-100 text-blue-800';
+      case 'viewed': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading invoices...</p>
-      </div>
-    );
+    return <LoadingSpinner text="Loading invoices..." />;
   }
 
   return (
@@ -216,6 +118,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Invoices</h1>
+          <p className="text-gray-600 mt-1">{filteredInvoices.length} invoice(s)</p>
         </div>
         <Link href="/dashboard/invoices/new">
           <Button>
@@ -225,26 +128,76 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {invoices.length === 0 ? (
+      {/* Search & Filters */}
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by invoice number or client name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <Button
+            variant={statusFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('all')}
+            size="sm"
+          >
+            All
+          </Button>
+          <Button
+            variant={statusFilter === 'draft' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('draft')}
+            size="sm"
+          >
+            Draft
+          </Button>
+          <Button
+            variant={statusFilter === 'sent' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('sent')}
+            size="sm"
+          >
+            Sent
+          </Button>
+          <Button
+            variant={statusFilter === 'viewed' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('viewed')}
+            size="sm"
+          >
+            Viewed
+          </Button>
+        </div>
+      </div>
+
+      {filteredInvoices.length === 0 ? (
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No invoices yet</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            {searchTerm || statusFilter !== 'all' ? 'No invoices found' : 'No invoices yet'}
+          </h3>
           <p className="text-gray-600 mb-6">
-            Create your first invoice in 60 seconds
+            {searchTerm || statusFilter !== 'all' 
+              ? 'Try adjusting your filters'
+              : 'Create your first invoice in 60 seconds'
+            }
           </p>
-          <Link href="/dashboard/invoices/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Invoice
-            </Button>
-          </Link>
+          {!searchTerm && statusFilter === 'all' && (
+            <Link href="/dashboard/invoices/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Invoice
+              </Button>
+            </Link>
+          )}
         </Card>
       ) : (
         <div className="space-y-3">
-          {invoices.map(invoice => (
+          {filteredInvoices.map(invoice => (
             <Card key={invoice.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
-                {/* Left: Invoice info */}
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-blue-100 rounded flex items-center justify-center">
                     <FileText className="h-6 w-6 text-blue-600" />
@@ -269,80 +222,31 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Right: Actions */}
                 <div className="flex items-center gap-2">
-                  {invoice.status === 'draft' ? (
-                    <>
-                      <Link href={`/dashboard/invoices/${invoice.id}/edit`}>
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDownloadPDF(invoice.id, invoice.invoiceNumber)}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        PDF
-                      </Button>
-                      
-                      {/* ✅ UPDATED: Send button that opens modal */}
-                      <Button 
-                        size="sm"
-                        onClick={() => handleOpenSendModal(invoice)}
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        Send
-                      </Button>
-
-                      <Button 
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleWhatsAppShare(invoice)}
-                      >
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        WhatsApp
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Link href={`/dashboard/invoices/${invoice.id}`}>
-                        <Button variant="outline" size="sm">
-                          <Eye className="mr-2 h-4 w-4" />
-                          View
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDownloadPDF(invoice.id, invoice.invoiceNumber)}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        PDF
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </>
+                  <Link href={`/dashboard/invoices/${invoice.id}/edit`}>
+                    <Button variant="outline" size="sm">
+                      Edit
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleDownloadPDF(invoice.id, invoice.invoiceNumber)}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    PDF
+                  </Button>
+                  {invoice.status === 'draft' && (
+                    <Button size="sm">
+                      <Send className="mr-2 h-4 w-4" />
+                      Send
+                    </Button>
                   )}
                 </div>
               </div>
             </Card>
           ))}
         </div>
-      )}
-
-      {/* ✅ ADDED: Send Modal */}
-      {selectedInvoice && (
-        <SendModal
-          isOpen={sendModalOpen}
-          onClose={() => setSendModalOpen(false)}
-          invoice={selectedInvoice}
-          businessInfo={userData}
-          onSendEmail={handleSendEmail}
-          onDownloadPDF={() => handleDownloadPDF(selectedInvoice.id, selectedInvoice.invoiceNumber)}
-        />
       )}
     </div>
   );

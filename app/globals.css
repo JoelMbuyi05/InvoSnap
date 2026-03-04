@@ -282,3 +282,20 @@ html {
     @apply bg-background text-foreground;
   }
 }
+
+button,
+a > button,
+[role="button"] {
+  cursor: pointer !important;
+}
+
+/* Fix link cursor */
+a {
+  cursor: pointer;
+}
+
+/* Disabled buttons should show not-allowed cursor */
+button:disabled,
+button[disabled] {
+  cursor: not-allowed !important;
+}

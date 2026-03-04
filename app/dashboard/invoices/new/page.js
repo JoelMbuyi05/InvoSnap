@@ -8,16 +8,20 @@ import { useInvoiceStore } from '@/lib/store/invoiceStore';
 import { generateInvoiceNumber, calculateDueDate } from '@/lib/invoice/calculator';
 import { saveInvoice, validateInvoice } from '@/lib/invoice/save';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Send, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import InvoiceForm from '@/components/invoice/invoiceForm';
 import InvoicePreview from '@/components/invoice/invoicePreview';
+import SendModal from '@/components/invoice/sendModal';
+import { toast } from 'sonner';
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const { user, userData } = useAuth();
   const { invoice, setInvoiceDetails, resetInvoice } = useInvoiceStore();
   const [saving, setSaving] = useState(false);
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [savedInvoiceId, setSavedInvoiceId] = useState(null);
 
   useEffect(() => {
     if (userData) {
@@ -28,13 +32,12 @@ export default function NewInvoicePage() {
         userData.nextInvoiceNumber || 1
       );
       
-      const dueDate = calculateDueDate(
-        new Date().toISOString().split('T')[0],
-        30
-      );
+      const issueDate = new Date().toISOString().split('T')[0];
+      const dueDate = calculateDueDate(issueDate, 30);
 
       setInvoiceDetails({
         invoiceNumber,
+        issueDate,
         dueDate,
         taxRate: userData.taxRate || 0,
         notes: userData.defaultNotes || ''
@@ -43,31 +46,55 @@ export default function NewInvoicePage() {
   }, [userData, resetInvoice, setInvoiceDetails]);
 
   async function handleSaveDraft() {
-    // Validate invoice
     const errors = validateInvoice(invoice);
     if (errors.length > 0) {
-      alert('Please fix these errors:\n\n' + errors.join('\n'));
+      errors.forEach(error => toast.error(error));
       return;
     }
 
     try {
       setSaving(true);
-      
-      // Save to Firestore
       const invoiceId = await saveInvoice(user.uid, invoice);
-      
       console.log('Invoice saved with ID:', invoiceId);
-      
-      // Show success message
-      alert('Invoice saved as draft!');
-      
-      // Redirect to dashboard
+      setSavedInvoiceId(invoiceId);
+      toast.success('Invoice saved as draft!');
       router.push('/dashboard');
     } catch (error) {
       console.error('Save error:', error);
-      alert('Error saving invoice: ' + error.message);
+      toast.error(error.message || 'Failed to save invoice');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePreviewAndSend() {
+    // First validate
+    const errors = validateInvoice(invoice);
+    if (errors.length > 0) {
+      errors.forEach(error => toast.error(error));
+      return;
+    }
+
+    // Save invoice first if not saved
+    if (!savedInvoiceId) {
+      try {
+        setSaving(true);
+        const invoiceId = await saveInvoice(user.uid, invoice);
+        console.log('Invoice saved with ID:', invoiceId);
+        setSavedInvoiceId(invoiceId);
+        toast.success('Invoice saved!');
+        
+        // Open send modal
+        setSendModalOpen(true);
+      } catch (error) {
+        console.error('Save error:', error);
+        toast.error(error.message || 'Failed to save invoice');
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      // Already saved, just open modal
+      setSendModalOpen(true);
     }
   }
 
@@ -101,7 +128,23 @@ export default function NewInvoicePage() {
               </>
             )}
           </Button>
-          <Button>Preview & Send</Button>
+          
+          <Button 
+            onClick={handlePreviewAndSend}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Preview & Send
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -114,6 +157,17 @@ export default function NewInvoicePage() {
           <InvoicePreview />
         </div>
       </div>
+
+      {/* Send Modal */}
+      {savedInvoiceId && (
+        <SendModal
+          isOpen={sendModalOpen}
+          onClose={() => setSendModalOpen(false)}
+          invoice={invoice}
+          invoiceId={savedInvoiceId}
+          businessInfo={userData}
+        />
+      )}
     </div>
   );
 }

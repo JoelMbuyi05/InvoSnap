@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Upload, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { user, userData } = useAuth();
@@ -64,8 +65,10 @@ export default function SettingsPage() {
             defaultNotes: 'Thank you for your business!'
           });
         }
+        toast.success('Settings saved successfully!');
       } catch (error) {
         console.error('Error loading settings:', error);
+        toast.error('Failed to save settings');
       } finally {
         setLoading(false);
       }
@@ -90,13 +93,13 @@ export default function SettingsPage() {
     if (file) {
       // Check file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        alert('Logo must be less than 2MB');
+        toast.error('Logo must be less than 2MB');
         return;
       }
       
       // Check file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file (PNG, JPG, JPEG)');
+        toast.error('Please select an image file (PNG, JPG, JPEG)');
         return;
       }
       
@@ -358,28 +361,6 @@ export default function SettingsPage() {
                 rows={3}
                 disabled={saving}
               />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Account */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Current Plan</p>
-                <p className="text-sm text-gray-600">
-                  {userData?.plan === 'pro' ? 'Pro' : 'Free'}
-                </p>
-              </div>
-              {userData?.plan === 'free' && (
-                <Button type="button" disabled={saving}>
-                  Upgrade to Pro
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>

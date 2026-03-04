@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function EditClientPage() {
   const router = useRouter();
@@ -35,11 +36,12 @@ export default function EditClientPage() {
         if (clientDoc.exists()) {
           setFormData(clientDoc.data());
         } else {
-          alert('Client not found');
+          toast.error('Client not found');
           router.push('/dashboard/clients');
         }
       } catch (error) {
         console.error('Error fetching client:', error);
+        toast.error('Failed to load client');
       } finally {
         setLoading(false);
       }
@@ -68,20 +70,29 @@ export default function EditClientPage() {
         updatedAt: new Date().toISOString()
       });
 
+      toast.success('Client updated successfully!');
       router.push('/dashboard/clients');
     } catch (error) {
-      alert('Error updating client: ' + error.message);
+      console.error('Update error:', error);
+      toast.error('Error updating client: ' + error.message);
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading client...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto px-4 py-8">
       <Link href="/dashboard/clients">
         <Button variant="ghost" className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />

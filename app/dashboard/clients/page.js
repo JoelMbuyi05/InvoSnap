@@ -48,14 +48,15 @@ export default function ClientsPage() {
   }
 
   async function handleDelete(clientId) {
-    if (!confirm('Delete this client? This cannot be undone.')) return;
+    if (!window.confirm('Delete this client? This cannot be undone.')) return;
     
     try {
       await deleteDoc(doc(db, 'clients', clientId));
       // Remove from state (update UI)
       setClients(clients.filter(c => c.id !== clientId));
+      toast.success('Client deleted');
     } catch (error) {
-      alert('Error deleting client: ' + error.message);
+      toast.error('Failed to delete client');
     }
   }
 
