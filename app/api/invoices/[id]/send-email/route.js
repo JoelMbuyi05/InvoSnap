@@ -1,16 +1,14 @@
 // app/api/invoices/[id]/send-email/route.js
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { adminDb } from '@/lib/firebase/admin';
 import { getInvoiceEmailHTML, getInvoiceEmailText } from '@/lib/email/templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request, { params }) {
   try {
-    const {id: invoiceId} = await params;
-
+    const { id: invoiceId } = await params;
     if (!invoiceId) {
       console.error('❌ No invoice ID provided');
       return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
@@ -19,10 +17,9 @@ export async function POST(request, { params }) {
     console.log('📧 Sending email for invoice:', invoiceId);
 
     // Fetch invoice
-    const invoiceRef = doc(db, 'invoices', invoiceId);
-    const invoiceDoc = await getDoc(invoiceRef);
-    
-    if (!invoiceDoc.exists()) {
+    const invoiceDoc = await adminDb.collection('invoices').doc(invoiceId).get();
+
+    if (!invoiceDoc.exists) {
       console.error('❌ Invoice not found:', invoiceId);
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
@@ -36,10 +33,9 @@ export async function POST(request, { params }) {
     }
 
     // Fetch business info
-    const userRef = doc(db, 'users', invoice.userId);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
+    const userDoc = await adminDb.collection('users').doc(invoice.userId).get();
+
+    if (!userDoc.exists) {
       console.error('❌ User not found:', invoice.userId);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -57,41 +53,34 @@ export async function POST(request, { params }) {
 
     console.log('📨 Sending email to:', invoice.clientEmail);
 
-    // ✅ FIXED: Better error handling for Resend
-    try {
-      const { data, error } = await resend.emails.send({
-        from: 'InvoSnap <invoices@resend.dev>', // Test sender
-        to: invoice.clientEmail,
-        subject: `Invoice ${invoice.invoiceNumber} from ${businessInfo.businessName || 'InvoSnap'}`,
-        html: htmlContent,
-        text: textContent
-      });
+    const { data, error } = await resend.emails.send({
+      from: 'InvoSnap <invoices@resend.dev>',
+      to: invoice.clientEmail,
+      subject: `Invoice ${invoice.invoiceNumber} from ${businessInfo.businessName || 'InvoSnap'}`,
+      html: htmlContent,
+      text: textContent
+    });
 
-      if (error) {
-        console.error('❌ Resend API error:', error);
-        throw new Error(error.message || 'Resend API error');
-      }
-
-      console.log('✅ Email sent successfully, ID:', data?.id);
-
-      // Update invoice status
-      await updateDoc(invoiceRef, {
-        status: 'sent',
-        sentAt: new Date().toISOString(),
-        sentVia: ['email']
-      });
-
-      console.log('✅ Invoice status updated to sent');
-
-      return NextResponse.json({ 
-        success: true, 
-        messageId: data?.id 
-      });
-
-    } catch (resendError) {
-      console.error('❌ Resend error:', resendError);
-      throw resendError;
+    if (error) {
+      console.error('❌ Resend API error:', error);
+      throw new Error(error.message || 'Resend API error');
     }
+
+    console.log('✅ Email sent successfully, ID:', data?.id);
+
+    // Update invoice status
+    await adminDb.collection('invoices').doc(invoiceId).update({
+      status: 'sent',
+      sentAt: new Date().toISOString(),
+      sentVia: ['email']
+    });
+
+    console.log('✅ Invoice status updated to sent');
+
+    return NextResponse.json({ 
+      success: true, 
+      messageId: data?.id 
+    });
 
   } catch (error) {
     console.error('❌ Email sending error:', error);
@@ -100,7 +89,7 @@ export async function POST(request, { params }) {
       message: error.message,
       stack: error.stack
     });
-    
+
     return NextResponse.json({ 
       error: 'Failed to send email',
       details: error.message,

@@ -1,7 +1,7 @@
 // app/api/invoices/[id]/pdf/route.js
 import { NextResponse } from 'next/server';
 const { adminDb } = require('@/lib/firebase/admin');
-import ReactPDF from '@react-pdf/renderer';
+import { renderToBuffer } from '@react-pdf/renderer';
 import PDFInvoice from '@/components/pdf/PDFInvoice';
 
 export async function GET(request, { params }) {
@@ -41,7 +41,7 @@ export async function GET(request, { params }) {
     // Generate PDF
     console.log('🔄 Rendering PDF...');
     
-    const pdfBuffer = await ReactPDF.renderToBuffer(
+    const pdfBuffer = await renderToBuffer(
       <PDFInvoice 
         invoice={invoice}
         businessInfo={businessInfo}

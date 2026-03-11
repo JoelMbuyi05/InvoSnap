@@ -19,7 +19,8 @@ export default function NewInvoicePage() {
   const router = useRouter();
   const { user, userData } = useAuth();
   const { invoice, setInvoiceDetails, resetInvoice } = useInvoiceStore();
-  const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [savingAndSending, setSavingAndSending] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [savedInvoiceId, setSavedInvoiceId] = useState(null);
 
@@ -53,7 +54,7 @@ export default function NewInvoicePage() {
     }
 
     try {
-      setSaving(true);
+      setSavingDraft(true);
       const invoiceId = await saveInvoice(user.uid, invoice);
       console.log('Invoice saved with ID:', invoiceId);
       setSavedInvoiceId(invoiceId);
@@ -63,40 +64,37 @@ export default function NewInvoicePage() {
       console.error('Save error:', error);
       toast.error(error.message || 'Failed to save invoice');
     } finally {
-      setSaving(false);
+      setSavingDraft(false);
     }
   }
 
   async function handlePreviewAndSend() {
-    // First validate
     const errors = validateInvoice(invoice);
     if (errors.length > 0) {
       errors.forEach(error => toast.error(error));
       return;
     }
 
-    // Save invoice first if not saved
     if (!savedInvoiceId) {
       try {
-        setSaving(true);
+        setSavingAndSending(true);
         const invoiceId = await saveInvoice(user.uid, invoice);
         console.log('Invoice saved with ID:', invoiceId);
         setSavedInvoiceId(invoiceId);
         toast.success('Invoice saved!');
-        
-        // Open send modal
         setSendModalOpen(true);
       } catch (error) {
         console.error('Save error:', error);
         toast.error(error.message || 'Failed to save invoice');
       } finally {
-        setSaving(false);
+        setSavingAndSending(false);
       }
     } else {
-      // Already saved, just open modal
       setSendModalOpen(true);
     }
   }
+
+  const isBusy = savingDraft || savingAndSending;
 
   return (
     <div>
@@ -114,9 +112,9 @@ export default function NewInvoicePage() {
           <Button 
             variant="outline" 
             onClick={handleSaveDraft}
-            disabled={saving}
+            disabled={isBusy}
           >
-            {saving ? (
+            {savingDraft ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
@@ -131,9 +129,9 @@ export default function NewInvoicePage() {
           
           <Button 
             onClick={handlePreviewAndSend}
-            disabled={saving}
+            disabled={isBusy}
           >
-            {saving ? (
+            {savingAndSending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
@@ -158,7 +156,6 @@ export default function NewInvoicePage() {
         </div>
       </div>
 
-      {/* Send Modal */}
       {savedInvoiceId && (
         <SendModal
           isOpen={sendModalOpen}
