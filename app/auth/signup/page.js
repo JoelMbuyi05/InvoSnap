@@ -1,6 +1,5 @@
 // app/auth/signup/page.js
 'use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -9,7 +8,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { toast } from 'sonner';
+
+function getAuthErrorMessage(code) {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists. Try logging in instead.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Please use at least 6 characters.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please try again later.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.';
+    default:
+      return 'Failed to create account. Please try again.';
+  }
+}
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -25,7 +40,7 @@ export default function SignupPage() {
     e.preventDefault();
     
     if (password.length < 6) {
-      return setError('Password must be at least 6 characters');
+      return setError('Password must be at least 6 characters.');
     }
 
     try {
@@ -34,7 +49,7 @@ export default function SignupPage() {
       await signup(email, password, businessName);
       router.push('/dashboard');
     } catch (error) {
-      setError('Failed to create account: ' + error.message);
+      setError(getAuthErrorMessage(error.code));
     } finally {
       setLoading(false);
     }
@@ -50,11 +65,11 @@ export default function SignupPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                {error}
+              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm flex items-start gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
               </div>
             )}
-
             <div className="space-y-2">
               <Label htmlFor="businessName">Business Name</Label>
               <Input
@@ -66,7 +81,6 @@ export default function SignupPage() {
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -78,7 +92,6 @@ export default function SignupPage() {
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -91,11 +104,9 @@ export default function SignupPage() {
               />
               <p className="text-xs text-gray-500">At least 6 characters</p>
             </div>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating account...' : 'Create account'}
             </Button>
-
             <p className="text-center text-sm text-gray-600">
               Already have an account?{' '}
               <Link href="/auth/login" className="text-blue-600 hover:underline">

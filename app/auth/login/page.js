@@ -1,6 +1,5 @@
 // app/auth/login/page.js
 'use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -9,6 +8,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+
+function getAuthErrorMessage(code) {
+  switch (code) {
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Incorrect email or password. Please try again.';
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Please try again later or reset your password.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Please contact support.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.';
+    default:
+      return 'Failed to log in. Please check your email and password.';
+  }
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,14 +39,13 @@ export default function LoginPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-
     try {
       setError('');
       setLoading(true);
       await login(email, password);
       router.push('/dashboard');
     } catch (error) {
-      setError('Failed to log in. Please check your email and password.');
+      setError(getAuthErrorMessage(error.code));
     } finally {
       setLoading(false);
     }
@@ -48,7 +65,6 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -60,7 +76,6 @@ export default function LoginPage() {
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -72,11 +87,9 @@ export default function LoginPage() {
                 required
               />
             </div>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Logging in...' : 'Log in'}
             </Button>
-
             <p className="text-center text-sm text-gray-600">
               Don&apos;t have an account?{' '}
               <Link href="/auth/signup" className="text-blue-600 hover:underline">
