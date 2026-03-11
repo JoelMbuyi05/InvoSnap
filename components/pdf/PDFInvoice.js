@@ -1,111 +1,180 @@
 // components/pdf/PDFInvoice.js
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import React from 'react';
+import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
+// Register fonts (optional)
+Font.register({
+  family: 'Inter',
+  src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2'
+});
 
-// EXPLANATION: PDF styles (similar to CSS but limited)
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontSize: 10,
-    fontFamily: 'Helvetica'
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+    backgroundColor: '#ffffff'
   },
   header: {
+    marginBottom: 30,
+    borderBottomWidth: 2,
+    borderBottomColor: '#2563eb',
+    paddingBottom: 20
+  },
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30
-  },
-  logo: {
-    width: 60,
-    height: 60,
-    marginBottom: 10
+    alignItems: 'flex-start'
   },
   businessInfo: {
+    maxWidth: '50%'
+  },
+  businessName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#1f2937'
+  },
+  businessDetails: {
     fontSize: 9,
-    color: '#666'
+    color: '#6b7280',
+    marginTop: 2
   },
   invoiceTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    textAlign: 'right'
+    color: '#2563eb',
+    textAlign: 'right',
+    marginBottom: 8
   },
   invoiceNumber: {
-    fontSize: 10,
-    color: '#666',
-    textAlign: 'right',
-    marginTop: 5
+    fontSize: 11,
+    color: '#6b7280',
+    textAlign: 'right'
   },
   section: {
+    marginBottom: 25
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 20
   },
-  sectionTitle: {
-    fontSize: 8,
-    color: '#999',
-    marginBottom: 5,
-    textTransform: 'uppercase',
-    letterSpacing: 1
+  column: {
+    width: '48%'
   },
-  clientInfo: {
-    fontSize: 10
+  label: {
+    fontSize: 9,
+    color: '#2563eb',
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
+  },
+  value: {
+    fontSize: 11,
+    color: '#1f2937',
+    marginBottom: 2
+  },
+  clientName: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4
   },
   table: {
     marginTop: 20,
-    marginBottom: 20
+    marginBottom: 30
   },
   tableHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 2,
-    borderBottomColor: '#000',
-    paddingBottom: 8,
-    marginBottom: 8
+    backgroundColor: '#2563eb',
+    padding: 10,
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 10
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 8
+    borderBottomColor: '#e5e7eb',
+    padding: 10,
+    fontSize: 10
   },
-  tableCol1: {
+  colDescription: {
     width: '50%'
   },
-  tableCol2: {
+  colQty: {
     width: '15%',
     textAlign: 'right'
   },
-  tableCol3: {
-    width: '20%',
+  colRate: {
+    width: '17.5%',
     textAlign: 'right'
   },
-  tableCol4: {
-    width: '25%',
-    textAlign: 'right'
+  colAmount: {
+    width: '17.5%',
+    textAlign: 'right',
+    fontWeight: 'bold'
   },
-  totals: {
-    marginLeft: 'auto',
-    width: '40%',
+  totalsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
     marginTop: 20
+  },
+  totalsBox: {
+    width: '50%'
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    padding: 8,
     fontSize: 10
   },
-  totalLine: {
+  totalLabel: {
+    color: '#6b7280'
+  },
+  totalValue: {
+    color: '#1f2937',
+    fontWeight: 'bold'
+  },
+  grandTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 8,
+    padding: 12,
+    backgroundColor: '#f3f4f6',
     borderTopWidth: 2,
-    borderTopColor: '#000',
-    marginTop: 8
+    borderTopColor: '#2563eb',
+    marginTop: 5
   },
-  totalAmount: {
+  grandTotalLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    textTransform: 'uppercase'
+  },
+  grandTotalValue: {
     fontSize: 16,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    color: '#2563eb'
   },
   notes: {
     marginTop: 30,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb'
+  },
+  notesLabel: {
     fontSize: 9,
-    color: '#666'
+    color: '#2563eb',
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textTransform: 'uppercase'
+  },
+  notesText: {
+    fontSize: 9,
+    color: '#6b7280',
+    lineHeight: 1.5
   },
   footer: {
     position: 'absolute',
@@ -114,125 +183,160 @@ const styles = StyleSheet.create({
     right: 40,
     textAlign: 'center',
     fontSize: 8,
-    color: '#999'
+    color: '#9ca3af',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 10
   }
 });
 
-export default function PDFInvoice({ invoice, businessInfo}) {
+export default function PDFInvoice({ invoice, businessInfo }) {
+  // Helper function to format currency
+  const formatCurrency = (amount) => {
+    return `$${Number(amount || 0).toFixed(2)}`;
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            {businessInfo.logoUrl && (
-              <Image 
-                src={businessInfo.logoUrl} 
-                style={styles.logo}
-                cache={false}
-                alt="Business logo"
-              />
-            )}
-            <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>
-              {businessInfo.businessName}
-            </Text>
+          <View style={styles.headerRow}>
             <View style={styles.businessInfo}>
-              {businessInfo.businessEmail && (
-                <Text>{businessInfo.businessEmail}</Text>
+              <Text style={styles.businessName}>
+                {businessInfo?.businessName || 'Business Name'}
+              </Text>
+              {businessInfo?.businessEmail && (
+                <Text style={styles.businessDetails}>{businessInfo.businessEmail}</Text>
               )}
-              {businessInfo.businessPhone && (
-                <Text>{businessInfo.businessPhone}</Text>
+              {businessInfo?.businessPhone && (
+                <Text style={styles.businessDetails}>{businessInfo.businessPhone}</Text>
               )}
-              {businessInfo.businessAddress && (
-                <Text>{businessInfo.businessAddress}</Text>
+              {businessInfo?.businessAddress && (
+                <Text style={styles.businessDetails}>{businessInfo.businessAddress}</Text>
               )}
             </View>
-          </View>
-
-          <View>
-            <Text style={styles.invoiceTitle}>INVOICE</Text>
-            <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
+            
+            <View>
+              <Text style={styles.invoiceTitle}>INVOICE</Text>
+              <Text style={styles.invoiceNumber}>{invoice?.invoiceNumber || 'INV-0001'}</Text>
+            </View>
           </View>
         </View>
 
         {/* Bill To & Dates */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 }}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Bill To</Text>
-            <View style={styles.clientInfo}>
-              <Text style={{ fontWeight: 'bold', marginBottom: 3 }}>
-                {invoice.clientName}
-              </Text>
-              {invoice.clientEmail && <Text>{invoice.clientEmail}</Text>}
-              {invoice.clientAddress && <Text>{invoice.clientAddress}</Text>}
+        <View style={styles.section}>
+          <View style={styles.row}>
+            <View style={styles.column}>
+              <Text style={styles.label}>Bill To</Text>
+              <Text style={styles.clientName}>{invoice?.clientName || 'Client Name'}</Text>
+              {invoice?.clientEmail && (
+                <Text style={styles.value}>{invoice.clientEmail}</Text>
+              )}
+              {invoice?.clientAddress && (
+                <Text style={styles.value}>{invoice.clientAddress}</Text>
+              )}
             </View>
-          </View>
 
-          <View style={styles.section}>
-            <View style={{ marginBottom: 10 }}>
-              <Text style={styles.sectionTitle}>Issue Date</Text>
-              <Text>{invoice.issueDate}</Text>
-            </View>
-            <View>
-              <Text style={styles.sectionTitle}>Due Date</Text>
-              <Text>{invoice.dueDate}</Text>
+            <View style={[styles.column, { alignItems: 'flex-end' }]}>
+              <View style={{ marginBottom: 15 }}>
+                <Text style={styles.label}>Issue Date</Text>
+                <Text style={styles.value}>{formatDate(invoice?.issueDate)}</Text>
+              </View>
+              <View>
+                <Text style={styles.label}>Due Date</Text>
+                <Text style={styles.value}>{formatDate(invoice?.dueDate)}</Text>
+              </View>
             </View>
           </View>
         </View>
 
         {/* Items Table */}
         <View style={styles.table}>
+          {/* Table Header */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableCol1, { fontWeight: 'bold' }]}>Description</Text>
-            <Text style={[styles.tableCol2, { fontWeight: 'bold' }]}>Qty</Text>
-            <Text style={[styles.tableCol3, { fontWeight: 'bold' }]}>Rate</Text>
-            <Text style={[styles.tableCol4, { fontWeight: 'bold' }]}>Amount</Text>
+            <Text style={styles.colDescription}>Description</Text>
+            <Text style={styles.colQty}>Qty</Text>
+            <Text style={styles.colRate}>Rate</Text>
+            <Text style={styles.colAmount}>Amount</Text>
           </View>
 
-          {invoice.items.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.tableCol1}>{item.description}</Text>
-              <Text style={styles.tableCol2}>{item.quantity}</Text>
-              <Text style={styles.tableCol3}>${item.rate.toFixed(2)}</Text>
-              <Text style={styles.tableCol4}>${item.amount.toFixed(2)}</Text>
+          {/* Table Rows */}
+          {invoice?.items && invoice.items.length > 0 ? (
+            invoice.items.map((item, index) => (
+              <View key={index} style={styles.tableRow}>
+                <Text style={styles.colDescription}>{item.description || 'Item'}</Text>
+                <Text style={styles.colQty}>{item.quantity || 0}</Text>
+                <Text style={styles.colRate}>{formatCurrency(item.rate)}</Text>
+                <Text style={styles.colAmount}>{formatCurrency(item.amount)}</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.tableRow}>
+              <Text style={styles.colDescription}>No items</Text>
+              <Text style={styles.colQty}>0</Text>
+              <Text style={styles.colRate}>$0.00</Text>
+              <Text style={styles.colAmount}>$0.00</Text>
             </View>
-          ))}
+          )}
         </View>
 
         {/* Totals */}
-        <View style={styles.totals}>
-          <View style={styles.totalRow}>
-            <Text>Subtotal</Text>
-            <Text>${invoice.subtotal.toFixed(2)}</Text>
-          </View>
-
-          {invoice.discountPercent > 0 && (
+        <View style={styles.totalsContainer}>
+          <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
-              <Text>Discount ({invoice.discountPercent}%)</Text>
-              <Text>-${invoice.discountAmount.toFixed(2)}</Text>
+              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalValue}>{formatCurrency(invoice?.subtotal)}</Text>
             </View>
-          )}
 
-          {invoice.taxRate > 0 && (
-            <View style={styles.totalRow}>
-              <Text>Tax ({invoice.taxRate}%)</Text>
-              <Text>${invoice.taxAmount.toFixed(2)}</Text>
+            {invoice?.discountPercent > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  Discount ({invoice.discountPercent}%)
+                </Text>
+                <Text style={styles.totalValue}>
+                  -{formatCurrency(invoice?.discountAmount)}
+                </Text>
+              </View>
+            )}
+
+            {invoice?.taxRate > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Tax ({invoice.taxRate}%)</Text>
+                <Text style={styles.totalValue}>{formatCurrency(invoice?.taxAmount)}</Text>
+              </View>
+            )}
+
+            <View style={styles.grandTotal}>
+              <Text style={styles.grandTotalLabel}>Total</Text>
+              <Text style={styles.grandTotalValue}>{formatCurrency(invoice?.total)}</Text>
             </View>
-          )}
-
-          <View style={[styles.totalRow, styles.totalLine]}>
-            <Text style={{ fontWeight: 'bold' }}>Total</Text>
-            <Text style={styles.totalAmount}>${invoice.total.toFixed(2)}</Text>
           </View>
         </View>
 
         {/* Notes */}
-        {invoice.notes && (
+        {invoice?.notes && (
           <View style={styles.notes}>
-            <Text style={styles.sectionTitle}>Notes</Text>
-            <Text>{invoice.notes}</Text>
+            <Text style={styles.notesLabel}>Notes</Text>
+            <Text style={styles.notesText}>{invoice.notes}</Text>
           </View>
         )}
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text>Generated by InvoSnap • {businessInfo?.businessName || 'InvoSnap'}</Text>
+        </View>
       </Page>
     </Document>
   );

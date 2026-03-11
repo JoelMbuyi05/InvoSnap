@@ -4,8 +4,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mail, MessageCircle, Download, Link as LinkIcon, Loader2, Check, X } from 'lucide-react';
-import { generateWhatsAppLink } from '@/lib/whatsapp/share';
+import { Mail, MessageCircle, Download, Link as LinkIcon, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SendModal({ 
@@ -15,7 +14,6 @@ export default function SendModal({
   invoiceId,
   businessInfo
 }) {
-
   const [sending, setSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -34,7 +32,8 @@ export default function SendModal({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send email');
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to send email');
       }
 
       setEmailSent(true);
@@ -46,23 +45,44 @@ export default function SendModal({
       }, 2000);
     } catch (error) {
       console.error('Send error:', error);
-      toast.error('Failed to send email');
+      toast.error(error.message || 'Failed to send email');
     } finally {
       setSending(false);
     }
   }
 
   function handleWhatsApp() {
-    if (!invoice.clientPhone) {
-      // No phone number - just open WhatsApp with message
-      const message = `Hi! Here's your invoice from ${businessInfo?.businessName || 'us'}.\n\nInvoice: ${invoice.invoiceNumber}\nAmount: $${invoice.total?.toFixed(2)}\n\nView invoice: ${invoiceUrl}`;
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    // Professional WhatsApp message (no emojis for professional look)
+    const dueDate = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    }) : 'Upon receipt';
+
+    const message = `Hello ${invoice.clientName || 'there'},
+
+${businessInfo?.businessName || 'We'} sent you a new invoice.
+
+INVOICE DETAILS
+━━━━━━━━━━━━━━━
+Invoice #: ${invoice.invoiceNumber}
+Amount Due: $${invoice.total?.toFixed(2)}
+Due Date: ${dueDate}
+
+VIEW INVOICE
+${invoiceUrl}
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+${businessInfo?.businessName || 'InvoSnap'}`;
+    
+    if (invoice.clientPhone) {
+      const cleanPhone = invoice.clientPhone.replace(/[\s\-\(\)]/g, '');
+      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     } else {
-      // Has phone number - open chat with that contact
-      const cleanPhone = invoice.clientPhone.replace(/[\s\-\(\)]/g, '');
-      const message = `Hi ${invoice.clientName}! Here's your invoice from ${businessInfo?.businessName || 'us'}.\n\nInvoice: ${invoice.invoiceNumber}\nAmount: $${invoice.total?.toFixed(2)}\n\nView invoice: ${invoiceUrl}`;
-      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
     toast.success('Opening WhatsApp...');
@@ -70,10 +90,13 @@ export default function SendModal({
 
   async function handleDownloadPDF() {
     try {
-      toast.loading('Generating PDF...');
+      const toastId = toast.loading('Generating PDF...');
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`);
       
-      if (!response.ok) throw new Error('Failed to generate PDF');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to generate PDF');
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -85,10 +108,10 @@ export default function SendModal({
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast.success('PDF downloaded!');
+      toast.success('PDF downloaded!', { id: toastId });
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Error downloading PDF');
+      toast.error(error.message || 'Error downloading PDF');
     }
   }
 
@@ -101,8 +124,9 @@ export default function SendModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          Send Invoice {invoice.invoiceNumber
-          }
+          <DialogTitle>
+            Send Invoice {invoice.invoiceNumber}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 py-4">

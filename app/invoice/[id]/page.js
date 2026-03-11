@@ -7,10 +7,8 @@ import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Zap } from 'lucide-react';
+import { Download, Zap, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import Image from 'next/image';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
 
 export default function PublicInvoicePage() {
@@ -18,6 +16,7 @@ export default function PublicInvoicePage() {
   const [invoice, setInvoice] = useState(null);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const invoiceId = params.id;
 
@@ -29,40 +28,47 @@ export default function PublicInvoicePage() {
 
   async function fetchInvoice() {
     try {
+      console.log('📄 Fetching invoice:', invoiceId);
+      
       const invoiceDoc = await getDoc(doc(db, 'invoices', invoiceId));
       
       if (!invoiceDoc.exists()) {
-        toast.error('Invoice not found');
+        console.error('❌ Invoice not found');
+        setError('Invoice not found');
         setLoading(false);
         return;
       }
 
       const invoiceData = invoiceDoc.data();
+      console.log('✅ Invoice found:', invoiceData.invoiceNumber);
       setInvoice(invoiceData);
 
       // Fetch business info
       const userDoc = await getDoc(doc(db, 'users', invoiceData.userId));
       if (userDoc.exists()) {
         setBusiness(userDoc.data());
+        console.log('✅ Business info loaded');
       }
 
-      // ✅ TRACK VIEW: Update status to "viewed" if currently "sent"
+      // Track view: Update status to "viewed" if currently "sent"
       if (invoiceData.status === 'sent') {
         await updateDoc(doc(db, 'invoices', invoiceId), {
           status: 'viewed',
           viewedAt: new Date().toISOString(),
           viewCount: increment(1)
         });
+        console.log('✅ Status updated to viewed');
       } else {
         // Just increment view counter
         await updateDoc(doc(db, 'invoices', invoiceId), {
           viewCount: increment(1)
         });
+        console.log('✅ View count incremented');
       }
 
     } catch (error) {
-      console.error('Error fetching invoice:', error);
-      toast.error('Failed to load invoice');
+      console.error('❌ Error fetching invoice:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -73,7 +79,10 @@ export default function PublicInvoicePage() {
       const toastId = toast.loading('Generating PDF...');
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`);
       
-      if (!response.ok) throw new Error('Failed to generate PDF');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || 'Failed to generate PDF');
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -88,20 +97,32 @@ export default function PublicInvoicePage() {
       toast.success('PDF downloaded!', { id: toastId });
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Error downloading PDF');
+      toast.error(error.message || 'Error downloading PDF');
     }
   }
 
   if (loading) {
-    return <LoadingSpinner text="Loading invoice..." />;
-  }
-
-  if (!invoice) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="p-12 text-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading invoice...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !invoice) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="p-12 text-center max-w-md">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Invoice Not Found</h2>
-          <p className="text-gray-600">This invoice may have been deleted or the link is incorrect.</p>
+          <p className="text-gray-600 mb-6">
+            {error || 'This invoice may have been deleted or the link is incorrect.'}
+          </p>
+          <p className="text-sm text-gray-500">
+            Invoice ID: {invoiceId}
+          </p>
         </Card>
       </div>
     );
@@ -131,15 +152,15 @@ export default function PublicInvoicePage() {
             <div className="flex justify-between items-start">
               <div>
                 {business?.logoUrl && (
-                  <Image
+                  <img 
                     src={business.logoUrl} 
                     alt="Logo" 
-                    fill
-                    className="object-contain object-left" 
-                    unoptimized={true}
-                    />
+                    className="h-16 mb-4 object-contain" 
+                  />
                 )}
-                <h2 className="font-semibold text-gray-900">{business?.businessName || 'Business Name'}</h2>
+                <h2 className="font-semibold text-gray-900">
+                  {business?.businessName || 'Business Name'}
+                </h2>
                 <div className="text-sm text-gray-600 mt-1 space-y-0.5">
                   {business?.businessEmail && <p>{business.businessEmail}</p>}
                   {business?.businessPhone && <p>{business.businessPhone}</p>}
@@ -165,11 +186,15 @@ export default function PublicInvoicePage() {
             <div className="text-right">
               <div className="mb-3">
                 <p className="text-sm font-semibold text-blue-600 mb-1">ISSUE DATE</p>
-                <p className="text-gray-900">{format(new Date(invoice.issueDate), 'MMM d, yyyy')}</p>
+                <p className="text-gray-900">
+                  {format(new Date(invoice.issueDate), 'MMM d, yyyy')}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-semibold text-blue-600 mb-1">DUE DATE</p>
-                <p className="text-gray-900">{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</p>
+                <p className="text-gray-900">
+                  {format(new Date(invoice.dueDate), 'MMM d, yyyy')}
+                </p>
               </div>
             </div>
           </div>
@@ -189,8 +214,12 @@ export default function PublicInvoicePage() {
                 <tr key={index} className="border-b border-gray-200">
                   <td className="py-3 text-gray-900">{item.description}</td>
                   <td className="py-3 text-right text-gray-900">{item.quantity}</td>
-                  <td className="py-3 text-right text-gray-900">${Number(item.rate).toFixed(2)}</td>
-                  <td className="py-3 text-right font-medium text-gray-900">${Number(item.amount).toFixed(2)}</td>
+                  <td className="py-3 text-right text-gray-900">
+                    ${Number(item.rate).toFixed(2)}
+                  </td>
+                  <td className="py-3 text-right font-medium text-gray-900">
+                    ${Number(item.amount).toFixed(2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -232,7 +261,7 @@ export default function PublicInvoicePage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>Powered by InvoSnap</p>
+          <p>Powered by InvoSnap • Professional Invoicing Made Simple</p>
         </div>
       </div>
     </div>

@@ -9,57 +9,102 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request, { params }) {
   try {
-    const invoiceId = params.id;
+    const {id: invoiceId} = await params;
+
+    if (!invoiceId) {
+      console.error('❌ No invoice ID provided');
+      return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
+    }
+
+    console.log('📧 Sending email for invoice:', invoiceId);
 
     // Fetch invoice
-    const invoiceDoc = await getDoc(doc(db, 'invoices', invoiceId));
+    const invoiceRef = doc(db, 'invoices', invoiceId);
+    const invoiceDoc = await getDoc(invoiceRef);
+    
     if (!invoiceDoc.exists()) {
+      console.error('❌ Invoice not found:', invoiceId);
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
     const invoice = invoiceDoc.data();
+    console.log('✅ Invoice found:', invoice.invoiceNumber);
+
+    if (!invoice.clientEmail) {
+      console.error('❌ No client email');
+      return NextResponse.json({ error: 'Client email is required' }, { status: 400 });
+    }
 
     // Fetch business info
-    const userDoc = await getDoc(doc(db, 'users', invoice.userId));
-    const businessInfo = userDoc.data();
+    const userRef = doc(db, 'users', invoice.userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.error('❌ User not found:', invoice.userId);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
-    // Generate invoice URL (public view)
-    const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invoice/${invoiceId}`;
+    const businessInfo = userDoc.data();
+    console.log('✅ Business info found');
+
+    // Generate invoice URL
+    const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invoice/${invoiceId}`;
+    console.log('🔗 Invoice URL:', invoiceUrl);
 
     // Generate email content
     const htmlContent = getInvoiceEmailHTML(invoice, businessInfo, invoiceUrl);
     const textContent = getInvoiceEmailText(invoice, businessInfo, invoiceUrl);
 
-    // Send email
-    const { data, error } = await resend.emails.send({
-      from: `${businessInfo.businessName} <invoices@resend.dev>`, // Use verified domain later
-      to: invoice.clientEmail,
-      subject: `Invoice ${invoice.invoiceNumber} from ${businessInfo.businessName}`,
-      html: htmlContent,
-      text: textContent
-    });
+    console.log('📨 Sending email to:', invoice.clientEmail);
 
-    if (error) {
-      console.error('Resend error:', error);
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+    // ✅ FIXED: Better error handling for Resend
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'InvoSnap <invoices@resend.dev>', // Test sender
+        to: invoice.clientEmail,
+        subject: `Invoice ${invoice.invoiceNumber} from ${businessInfo.businessName || 'InvoSnap'}`,
+        html: htmlContent,
+        text: textContent
+      });
+
+      if (error) {
+        console.error('❌ Resend API error:', error);
+        throw new Error(error.message || 'Resend API error');
+      }
+
+      console.log('✅ Email sent successfully, ID:', data?.id);
+
+      // Update invoice status
+      await updateDoc(invoiceRef, {
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+        sentVia: ['email']
+      });
+
+      console.log('✅ Invoice status updated to sent');
+
+      return NextResponse.json({ 
+        success: true, 
+        messageId: data?.id 
+      });
+
+    } catch (resendError) {
+      console.error('❌ Resend error:', resendError);
+      throw resendError;
     }
 
-    // Update invoice status
-    await updateDoc(doc(db, 'invoices', invoiceId), {
-      status: 'sent',
-      sentAt: new Date().toISOString(),
-      sentVia: ['email']
-    });
-
-    return NextResponse.json({ 
-      success: true, 
-      messageId: data.id 
-    });
-
   } catch (error) {
-    console.error('Email sending error:', error);
+    console.error('❌ Email sending error:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    
     return NextResponse.json({ 
-      error: error.message 
+      error: 'Failed to send email',
+      details: error.message,
+      hint: 'Check your Resend API key and email configuration'
     }, { status: 500 });
   }
 }

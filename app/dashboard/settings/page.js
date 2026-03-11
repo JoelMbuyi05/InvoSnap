@@ -13,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Upload, Loader2 } from 'lucide-react';
-import Image from 'next/image';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -245,14 +244,10 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 {logoUrl && (
                   <div className="relative h-16 w-16 border rounded overflow-hidden">
-                    <Image
+                    <img
                       src={logoUrl} 
                       alt="Logo" 
-                      fill
-                      sizes="64px"
-                      className="object-contain"
-                      priority={false}
-                      unoptimized={true}
+                      className="h-16 mb-4 object-contain border rounded"
                     />
                   </div>
                 )}

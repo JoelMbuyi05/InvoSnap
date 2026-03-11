@@ -4,7 +4,6 @@
 import { useAuth } from '@/lib/context/AuthContext';
 import { useInvoiceStore } from '@/lib/store/invoiceStore';
 import { Card } from '@/components/ui/card';
-import Image from 'next/image';
 import { format } from 'date-fns';
 
 export default function InvoicePreview() {
@@ -22,13 +21,10 @@ export default function InvoicePreview() {
           <div className="flex justify-between items-start">
             <div>
               {userData?.logoUrl && (
-                <Image
+                <img
                   src={userData.logoUrl} 
                   alt="Logo" 
-                  fill
-                  sizes = "128px"
-                  className="object-contain object-left" 
-                  unoptimized={true}
+                  className=" h-16 mb-4 object-contain" 
                   />
               )}
               <h2 className="font-semibold text-gray-900">
@@ -139,12 +135,10 @@ export default function InvoicePreview() {
           <div className="flex justify-between items-start">
             <div>
               {userData?.logoUrl && (
-                <Image
+                <img
                   src={userData.logoUrl} 
                   alt="Logo" 
-                  sizes = "128px"
-                  className="object-contain object-left"
-                  unoptimized={true} 
+                  className="h-16 mb-4 object-contain"
                   />
               )}
               <h1 className="text-4xl font-bold">{userData?.businessName || 'Business Name'}</h1>
@@ -254,7 +248,10 @@ export default function InvoicePreview() {
           <div className="flex justify-between items-start">
             <div>
               {userData?.logoUrl && (
-                <img src={userData.logoUrl} alt="Logo" className="h-12 mb-4 object-contain grayscale" />
+                <img 
+                src={userData.logoUrl} 
+                alt="Logo" 
+                className="h-16 mb-4 object-contain grayscale" />
               )}
               <h2 className="text-sm font-medium text-gray-600 uppercase tracking-widest">
                 {userData?.businessName || 'Business Name'}
