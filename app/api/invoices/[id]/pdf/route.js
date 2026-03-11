@@ -1,7 +1,6 @@
 // app/api/invoices/[id]/pdf/route.js
 import { NextResponse } from 'next/server';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+const { adminDb } = require('@/lib/firebase/admin');
 import ReactPDF from '@react-pdf/renderer';
 import PDFInvoice from '@/components/pdf/PDFInvoice';
 
@@ -18,10 +17,9 @@ export async function GET(request, { params }) {
     console.log('📄 Generating PDF for invoice:', invoiceId);
 
     // Fetch invoice
-    const invoiceRef = doc(db, 'invoices', invoiceId);
-    const invoiceDoc = await getDoc(invoiceRef);
+    const invoiceDoc = await adminDb.collection('invoices').doc(invoiceId).get();
     
-    if (!invoiceDoc.exists()) {
+    if (!invoiceDoc.exists) {
       console.error('❌ Invoice not found:', invoiceId);
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
@@ -30,10 +28,9 @@ export async function GET(request, { params }) {
     console.log('✅ Invoice found:', invoice.invoiceNumber);
 
     // Fetch business info
-    const userRef = doc(db, 'users', invoice.userId);
-    const userDoc = await getDoc(userRef);
+    const userDoc = await adminDb.collection('users').doc(invoice.userId).get();
     
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       console.error('❌ User not found:', invoice.userId);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
