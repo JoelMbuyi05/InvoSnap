@@ -116,8 +116,8 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-bold text-slate-900 mb-3">Questions?</h2>
             <p className="text-slate-700 leading-relaxed">
               If you have any questions about this Privacy Policy, please email us at{' '}
-              <a href="mailto:support@invosnap.app" className="text-blue-600 hover:text-blue-700 font-semibold">
-                support@invosnap.app
+              <a href="mailto:joelmbuyi700@gmail.com" className="text-blue-600 hover:text-blue-700 font-semibold">
+                joelmbuyi700@gmail.com
               </a>
             </p>
           </section>

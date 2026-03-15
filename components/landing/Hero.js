@@ -5,10 +5,25 @@ import { Button } from '@/components/ui/button';
 import { Zap, ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useScrollAnimation } from '@/lib/hooks/useScrollAnimation';
+import { useAuth } from '@/lib/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Hero() {
   const [heroRef, heroVisible] = useScrollAnimation({ once: true });
   const [cardRef, cardVisible] = useScrollAnimation({ once: true, threshold: 0.2 });
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
+
+  // Don't flash the landing page while checking auth
+  if (loading || user) return null;
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen flex flex-col">
@@ -37,13 +52,13 @@ export default function Hero() {
               How it works
             </a>
             
-            <Link href="auth/login" className="cursor-pointer">
+            <Link href="/auth/login" className="cursor-pointer">
               <Button variant="outline" className="text-md px-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-all cursor-pointer w-full sm:w-auto">
                 Log in
               </Button>
             </Link>
             
-            <Link href="auth/signup" className="cursor-pointer">
+            <Link href="/auth/signup" className="cursor-pointer">
               <Button className="bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all cursor-pointer">
                 Get Started
               </Button>
@@ -81,7 +96,7 @@ export default function Hero() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link href="/signup" className="cursor-pointer">
+                <Link href="/auth/signup" className="cursor-pointer">
                   <Button size="lg" className="text-lg px-8 bg-blue-600 text-white hover:bg-blue-700 shadow-xl hover:shadow-2xl hover:scale-105 transition-all cursor-pointer w-full sm:w-auto">
                     Start for Free
                     <ArrowRight className="ml-2 h-5 w-5" />
@@ -115,7 +130,6 @@ export default function Hero() {
               }`}
             >
               <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-200 transform hover:scale-105 hover:-rotate-1 transition-all duration-500">
-                {/* Mock Invoice Preview */}
                 <div className="space-y-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -147,7 +161,6 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Floating badges */}
               <div className="absolute -top-6 -right-6 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl font-bold text-lg transform rotate-3 hover:rotate-0 hover:scale-110 transition-all duration-300 cursor-default select-none">
                 ⚡ 60 sec
               </div>
@@ -155,14 +168,12 @@ export default function Hero() {
                 📧 Email + WhatsApp
               </div>
 
-              {/* Decorative elements */}
               <div className="absolute -z-10 -top-20 -right-20 w-64 h-64 bg-blue-200 rounded-full blur-3xl opacity-50"></div>
               <div className="absolute -z-10 -bottom-20 -left-20 w-64 h-64 bg-purple-200 rounded-full blur-3xl opacity-50"></div>
             </div>
           </div>
         </div>
       </div>
-
     </section>
   );
 }

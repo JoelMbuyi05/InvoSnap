@@ -10,6 +10,7 @@ const footerSections = [
     title: 'Product',
     links: [
       { name: 'Features', href: '#features' },
+      { name: 'How It Works', href: '#how-it-works' },
       { name: 'Sign up', href: '/signup' },
       { name: 'Log in', href: '/login' }
     ]
@@ -110,30 +111,7 @@ export default function Footer() {
             <p className="text-sm text-gray-400 leading-relaxed mb-6">
               Professional invoices in 60 seconds. Built for freelancers and small businesses.
             </p>
-            <div className="flex gap-3">
-              <a 
-                href="https://github.com/JoelMbuyi05"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-              >
-                <Github className="h-5 w-5" />
-              </a>
-              <a 
-                href="https://www.linkedin.com/in/joelmbuyi05/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-              >
-                <Linkedin className="h-5 w-5" />
-              </a>
-              <a 
-                href="mailto:joelmbuyi700@gmail.com"
-                className="w-10 h-10 bg-gray-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-              >
-                <Mail className="h-5 w-5" />
-              </a>
-            </div>
+            
           </div>
 
           {/* Footer columns */}
@@ -153,7 +131,7 @@ export default function Footer() {
               © {new Date().getFullYear()} InvoSnap. All rights reserved.
             </p>
             <p className="flex items-center gap-2">
-              Built with <span className="text-red-500 animate-pulse">❤️</span> by{' '}
+              Built by{' '}
               <a 
                 href="https://github.com/JoelMbuyi05" 
                 target="_blank"
