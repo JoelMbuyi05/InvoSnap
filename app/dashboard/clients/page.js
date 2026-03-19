@@ -1,4 +1,4 @@
-// app/dashboard/clients/page.js
+// app/dashboard/clients/page.js - MOBILE RESPONSIVE VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,14 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Plus, Mail, Phone, Trash2, Edit } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function ClientsPage() {
   const { user, userData } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // EXPLANATION: useEffect runs when component loads
-  // We fetch clients from Firestore and store in state
   useEffect(() => {
     if (user) {
       fetchClients();
@@ -25,7 +24,6 @@ export default function ClientsPage() {
 
   async function fetchClients() {
     try {
-      // EXPLANATION: Query Firestore for clients belonging to this user
       const q = query(
         collection(db, 'clients'),
         where('userId', '==', user.uid)
@@ -33,7 +31,6 @@ export default function ClientsPage() {
       
       const snapshot = await getDocs(q);
       
-      // EXPLANATION: Convert Firestore docs to array of objects
       const clientsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -42,45 +39,51 @@ export default function ClientsPage() {
       setClients(clientsData);
     } catch (error) {
       console.error('Error fetching clients:', error);
+      toast.error('Failed to load clients');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleDelete(clientId) {
-    if (!window.confirm('Delete this client? This cannot be undone.')) return;
+  async function handleDelete(clientId, clientName) {
+    if (!window.confirm(`Delete ${clientName}? This cannot be undone.`)) return;
     
     try {
       await deleteDoc(doc(db, 'clients', clientId));
-      // Remove from state (update UI)
       setClients(clients.filter(c => c.id !== clientId));
       toast.success('Client deleted');
     } catch (error) {
+      console.error('Delete error:', error);
       toast.error('Failed to delete client');
     }
   }
 
   if (loading) {
-    return <div>Loading clients...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p>Loading clients...</p>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-7xl mx-auto">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Clients</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Clients</h1>
+          <p className="text-gray-600 mt-1">{clients.length} client(s)</p>
         </div>
-          <Link href="/dashboard/clients/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Client
-            </Button>
-          </Link>
+        <Link href="/dashboard/clients/new" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Client
+          </Button>
+        </Link>
       </div>
 
       {clients.length === 0 ? (
-        // EMPTY STATE
-        <Card className="p-12 text-center">
+        <Card className="p-8 sm:p-12 text-center">
           <h3 className="text-lg font-semibold mb-2">No clients yet</h3>
           <p className="text-gray-600 mb-6">
             Add your first client to start invoicing
@@ -93,22 +96,24 @@ export default function ClientsPage() {
           </Link>
         </Card>
       ) : (
-        // CLIENT LIST
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {clients.map(client => (
-            <Card key={client.id} className="p-6">
+            <Card key={client.id} className="p-4 sm:p-6">
               <div className="flex items-start justify-between mb-4">
-                <h3 className="font-semibold text-lg">{client.name}</h3>
-                <div className="flex gap-2">
+                <h3 className="font-semibold text-base sm:text-lg truncate pr-2">
+                  {client.name}
+                </h3>
+                <div className="flex gap-1 flex-shrink-0">
                   <Link href={`/dashboard/clients/${client.id}/edit`}>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Edit className="h-4 w-4" />
                     </Button>
                   </Link>
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    onClick={() => handleDelete(client.id)}
+                    className="h-8 w-8"
+                    onClick={() => handleDelete(client.id, client.name)}
                   >
                     <Trash2 className="h-4 w-4 text-red-600" />
                   </Button>
@@ -118,18 +123,18 @@ export default function ClientsPage() {
               <div className="space-y-2 text-sm text-gray-600">
                 {client.email && (
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    {client.email}
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{client.email}</span>
                   </div>
                 )}
                 {client.phone && (
                   <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    {client.phone}
+                    <Phone className="h-4 w-4 flex-shrink-0" />
+                    <span>{client.phone}</span>
                   </div>
                 )}
                 {client.address && (
-                  <p className="text-xs mt-2">{client.address}</p>
+                  <p className="text-xs mt-2 line-clamp-2">{client.address}</p>
                 )}
               </div>
             </Card>

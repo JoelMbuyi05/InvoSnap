@@ -1,4 +1,4 @@
-// app/(dashboard)/dashboard/clients/new/page.js
+// app/(dashboard)/dashboard/clients/new/page.js - MOBILE RESPONSIVE VERSION
 'use client';
 
 import { useState } from 'react';
@@ -19,7 +19,6 @@ export default function NewClientPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
   
-  // EXPLANATION: Each input needs its own state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,42 +27,39 @@ export default function NewClientPage() {
   });
   const [loading, setLoading] = useState(false);
 
-  // EXPLANATION: This function updates state when user types
   function handleChange(e) {
     const { name, value } = e.target;
     setFormData(prev => ({
-      ...prev,      // Keep existing data
-      [name]: value // Update the field that changed
+      ...prev,
+      [name]: value
     }));
   }
 
   async function handleSubmit(e) {
-    e.preventDefault(); // Prevent page refresh
+    e.preventDefault();
     
     if (!formData.name || !formData.email) {
       toast.error('Name and email are required');
-      return
+      return;
     }
 
     try {
       setLoading(true);
       
-      // Add client to Firestore
       await addDoc(collection(db, 'clients'), {
         userId: user.uid,
         ...formData,
         createdAt: new Date().toISOString()
       });
 
-      // Update user's client count
       await updateDoc(doc(db, 'users', user.uid), {
         clientsCount: increment(1)
       });
 
-      // Go back to clients list
       toast.success('Client added successfully!');
       router.push('/dashboard/clients');
     } catch (error) {
+      console.error('Add client error:', error);
       toast.error('Failed to add client: ' + error.message);
     } finally {
       setLoading(false);
@@ -71,9 +67,9 @@ export default function NewClientPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto px-4 sm:px-0">
       <Link href="/dashboard/clients">
-        <Button variant="ghost" className="mb-4">
+        <Button variant="ghost" className="mb-4 -ml-2 sm:ml-0">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Clients
         </Button>
@@ -81,7 +77,7 @@ export default function NewClientPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add New Client</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl">Add New Client</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -134,12 +130,12 @@ export default function NewClientPage() {
               />
             </div>
 
-            <div className="flex gap-4">
-              <Button type="submit" disabled={loading}>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                 {loading ? 'Adding...' : 'Add Client'}
               </Button>
-              <Link href="/dashboard/clients">
-                <Button type="button" variant="outline">
+              <Link href="/dashboard/clients" className="w-full sm:w-auto">
+                <Button type="button" variant="outline" className="w-full">
                   Cancel
                 </Button>
               </Link>

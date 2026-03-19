@@ -1,4 +1,4 @@
-// app/(dashboard)/dashboard/invoices/[id]/edit/page.js
+// app/(dashboard)/dashboard/invoices/[id]/edit/page.js - MOBILE RESPONSIVE VERSION
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -46,14 +46,12 @@ export default function EditInvoicePage() {
 
       const invoiceData = invoiceDoc.data();
       
-      // Security check
       if (invoiceData.userId !== user.uid) {
         toast.error('You do not have permission to edit this invoice');
         router.push('/dashboard');
         return;
       }
 
-      // Load invoice into store
       loadInvoice(invoiceData);
     } catch (error) {
       console.error('Error fetching invoice:', error);
@@ -109,22 +107,26 @@ export default function EditInvoicePage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+    <div className="max-w-7xl mx-auto">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
           <Link href="/dashboard">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="-ml-2 sm:ml-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Edit Invoice {invoice.invoiceNumber}</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">
+            Edit {invoice.invoiceNumber}
+          </h1>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button 
             variant="outline" 
             onClick={handleSave}
             disabled={saving}
+            className="w-full sm:w-auto order-2 sm:order-1"
           >
             {saving ? (
               <>
@@ -142,6 +144,7 @@ export default function EditInvoicePage() {
           <Button 
             onClick={handleSaveAndSend}
             disabled={saving}
+            className="w-full sm:w-auto order-1 sm:order-2"
           >
             {saving ? (
               <>
@@ -158,13 +161,18 @@ export default function EditInvoicePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
+      {/* Form & Preview - Mobile: Stacked, Desktop: Side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        {/* Form */}
+        <div className="order-2 lg:order-1">
           <InvoiceForm />
         </div>
 
-        <div className="lg:sticky lg:top-8 h-fit">
-          <InvoicePreview />
+        {/* Preview */}
+        <div className="order-1 lg:order-2">
+          <div className="lg:sticky lg:top-8">
+            <InvoicePreview />
+          </div>
         </div>
       </div>
 

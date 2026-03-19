@@ -1,4 +1,4 @@
-// app/(dashboard)/dashboard/invoices/new/page.js
+// app/(dashboard)/dashboard/invoices/new/page.js - MOBILE RESPONSIVE VERSION
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -56,7 +56,6 @@ export default function NewInvoicePage() {
     try {
       setSavingDraft(true);
       const invoiceId = await saveInvoice(user.uid, invoice);
-      console.log('Invoice saved with ID:', invoiceId);
       setSavedInvoiceId(invoiceId);
       toast.success('Invoice saved as draft!');
       router.push('/dashboard');
@@ -79,7 +78,6 @@ export default function NewInvoicePage() {
       try {
         setSavingAndSending(true);
         const invoiceId = await saveInvoice(user.uid, invoice);
-        console.log('Invoice saved with ID:', invoiceId);
         setSavedInvoiceId(invoiceId);
         toast.success('Invoice saved!');
         setSendModalOpen(true);
@@ -97,22 +95,24 @@ export default function NewInvoicePage() {
   const isBusy = savingDraft || savingAndSending;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+    <div className="max-w-7xl mx-auto">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
           <Link href="/dashboard">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="-ml-2 sm:ml-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">New Invoice</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">New Invoice</h1>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button 
             variant="outline" 
             onClick={handleSaveDraft}
             disabled={isBusy}
+            className="w-full sm:w-auto order-2 sm:order-1"
           >
             {savingDraft ? (
               <>
@@ -130,6 +130,7 @@ export default function NewInvoicePage() {
           <Button 
             onClick={handlePreviewAndSend}
             disabled={isBusy}
+            className="w-full sm:w-auto order-1 sm:order-2"
           >
             {savingAndSending ? (
               <>
@@ -146,16 +147,22 @@ export default function NewInvoicePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
+      {/* Form & Preview - Mobile: Stacked, Desktop: Side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        {/* Form */}
+        <div className="order-2 lg:order-1">
           <InvoiceForm />
         </div>
 
-        <div className="lg:sticky lg:top-8 h-fit">
-          <InvoicePreview />
+        {/* Preview - Show first on mobile for immediate feedback */}
+        <div className="order-1 lg:order-2">
+          <div className="lg:sticky lg:top-8">
+            <InvoicePreview />
+          </div>
         </div>
       </div>
 
+      {/* Send Modal */}
       {savedInvoiceId && (
         <SendModal
           isOpen={sendModalOpen}

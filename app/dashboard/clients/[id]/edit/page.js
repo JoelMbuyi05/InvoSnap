@@ -1,4 +1,4 @@
-// app/dashboard/clients/[id]/edit/page.js
+// app/dashboard/clients/[id]/edit/page.js - MOBILE RESPONSIVE VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -28,7 +28,6 @@ export default function EditClientPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // EXPLANATION: Fetch client data when page loads
   useEffect(() => {
     async function fetchClient() {
       try {
@@ -64,7 +63,6 @@ export default function EditClientPage() {
     try {
       setSaving(true);
       
-      // Update client in Firestore
       await updateDoc(doc(db, 'clients', clientId), {
         ...formData,
         updatedAt: new Date().toISOString()
@@ -92,9 +90,9 @@ export default function EditClientPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 sm:px-0">
       <Link href="/dashboard/clients">
-        <Button variant="ghost" className="mb-4">
+        <Button variant="ghost" className="mb-4 -ml-2 sm:ml-0">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Clients
         </Button>
@@ -102,7 +100,7 @@ export default function EditClientPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Edit Client</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl">Edit Client</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,12 +149,12 @@ export default function EditClientPage() {
               />
             </div>
 
-            <div className="flex gap-4">
-              <Button type="submit" disabled={saving}>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
-              <Link href="/dashboard/clients">
-                <Button type="button" variant="outline">
+              <Link href="/dashboard/clients" className="w-full sm:w-auto">
+                <Button type="button" variant="outline" className="w-full">
                   Cancel
                 </Button>
               </Link>
